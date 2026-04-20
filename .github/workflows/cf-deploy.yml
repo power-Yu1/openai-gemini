@@ -1,18 +1,48 @@
 name: Deploy Worker
+
 on:
   push:
-    branches:
-      - main
-  pull_request:
-  repository_dispatch:
+    branches: [ main ]
+  # 如果需要 PR 预览部署，取消下面的注释
+  # pull_request:
+  #   branches: [ main ]
+  # repository_dispatch:   # 如果不需要 API 触发，可以删除
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    name: Deploy
+    timeout-minutes: 10
+    name: Deploy to Cloudflare Workers
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Build & Deploy Worker
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          # 如果有 package-lock.json 可以开启缓存
+          # cache: 'npm'
+
+      - name: 🔧 Install dependencies (if any)
+        run: |
+          if [ -f "package.json" ]; then
+            if [ -f "package-lock.json" ]; then
+              npm ci
+            else
+              npm install
+            fi
+          else
+            echo "No package.json found, skipping dependency installation"
+          fi
+
+      - name: 🚀 Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{secrets.CLOUDFLARE_ACCOUNT_ID }}
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # 如果你的 wrangler.toml 不在根目录，取消注释并修改路径
+          # workingDirectory: './worker'
+          # 可以指定 wrangler 版本（可选）
+          # wranglerVersion: '4.33.0'
